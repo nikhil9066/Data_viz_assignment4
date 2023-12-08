@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Contour Plot</title>
+    <script src="https://d3js.org/d3.v6.min.js"></script>
+    <style>
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        #contour-plot {
+            width: 80%;
+            max-width: 800px;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="contour-plot"></div>
+
+    <script>
+        const dataFile = 'Data_CT.csv';
+        const svgContainer = d3.select("#contour-plot")
+            .append("svg")
+            .attr("width", "100%")
+            .attr("height", "100%");
+
+        const geoPath = d3.geoPath();
+
+        function drawContourPlot(fileName) {
+            console.log('Start drawing contour plot...');
+            const startTime = performance.now();
+
+            d3.text(fileName)
+                .then(function (data) {
+                    const values = data.split('\n').map(Number).filter(value => !isNaN(value));
+
+                    if (values.length === 0) {
+                        console.error('No valid numeric values found in the data.');
+                        return;
+                    }
+
+                    const minData = d3.min(values);
+                    const maxData = d3.max(values);
+                    console.log('Min and Max values:', minData, maxData);
+
+                    const colorScale = d3.scaleLinear()
+                        .domain(d3.range(minData, maxData, parseInt(Math.abs(maxData - minData) / 6.5)))
+                        .range(["#0d1a50", "#3e5eba", "#2b83ba", "#abdda4", "#ffffbf", "#fdae61", "#d7191c"])
+                        .interpolate(d3.interpolateHcl);
+
+                    const contours = d3.contours()
+                        .size([values.length, 1]) // Assume one column, adjust if needed
+                        .thresholds(d3.range(minData, maxData, 6.5))
+                        (values);
+
+                    svgContainer.append("g").attr("class", "contours")
+                        .selectAll("path")
+                        .data(contours)
+                        .enter()
+                        .append("path")
+                        .attr("d", function (d) { return geoPath(d) })
+                        .attr("stroke", "black")
+                        .attr("stroke-width", ".1px")
+                        .attr("stroke-linejoin", "round")
+                        .attr("fill", function (d) { return colorScale(d.value); });
+
+                    const endTime = performance.now();
+                    console.log('Contour plot drawn successfully in', endTime - startTime, 'milliseconds!');
+                })
+                .catch(function (error) {
+                    console.error('Error loading data:', error);
+                });
+        }
+
+        drawContourPlot(dataFile);
+    </script>
+</body>
+
+</html>
